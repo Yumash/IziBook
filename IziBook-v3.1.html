@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>IziBook — скорочтение RSVP</title>
+<meta name="theme-color" content="#0f1712">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1712; --bg2: #15211a; --panel: #1a2920; --border: #27392d;
+    --text: #e9f1ea; --muted: #869e8b; --orp: #ff8a3d;
+    --accent: #f97316; --accent2: #fbbf24; --grad: linear-gradient(135deg, #f97316, #fbbf24);
+    --glow: rgba(249,115,22,.35); --glow-soft: rgba(249,115,22,.13);
+  }
+  body.light {
+    --bg: #f2f5ef; --bg2: #ffffff; --panel: #ffffff; --border: #dfe6da;
+    --text: #1c2a20; --muted: #6b7d6e; --orp: #e85d1a;
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+    background-image: radial-gradient(1100px 560px at 50% -12%, var(--glow-soft), transparent 62%);
+    display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    transition: background .2s, color .2s;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    overscroll-behavior: none;
+  }
+  button { font-family: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+  /* ---------- Экран загрузки ---------- */
+  #loader { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 40px 24px 16px; }
+  .header-row { display: flex; align-items: center; gap: 10px; }
+  .logo { width: 40px; height: 40px; border-radius: 12px; background: var(--grad); display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 6px 16px var(--glow); }
+  #loader h1 { font-size: 18px; font-weight: 800; letter-spacing: -.3px; background: var(--grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .brand { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .brand span { color: var(--accent); }
+  #loader p { color: var(--muted); max-width: 520px; text-align: center; line-height: 1.5; }
+  .rsvp-note { max-width: 480px; text-align: center; font-size: 11.5px; line-height: 1.6; color: var(--muted); opacity: .85; }
+  .rsvp-note b { color: var(--text); font-weight: 600; }
+  .loader-footer { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 8px; }
+  .credit { font-size: 12px; letter-spacing: 1px; color: var(--accent); text-decoration: none; font-weight: 700; }
+  .credit:hover { text-decoration: underline; }
+  .file-btn-wrap { position: relative; display: inline-block; }
+  .file-label { display: inline-block; padding: 15px 30px; background: var(--grad); color: #fff; border-radius: 11px; cursor: pointer; font-weight: 600; font-size: 16px; box-shadow: 0 8px 24px var(--glow); transition: transform .12s, box-shadow .12s; }
+  .file-label:active { transform: translateY(1px); }
+  .file-input { display: none; }
+  #pasteArea { width: 100%; max-width: 600px; height: 120px; padding: 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; resize: vertical; }
+  .divider { color: var(--muted); font-size: 13px; }
+  #status { font-size: 14px; color: #f0a030; min-height: 20px; text-align: center; max-width: 600px; font-weight: 500; }
+  #status.error { color: #ff6b6b; }
+
+  /* ---------- Экран чтения ---------- */
+  #reader { flex: 1; display: none; flex-direction: column; height: 100vh; height: 100dvh; }
+  #reader.active { display: flex; }
+
+  #topbar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg2); border-bottom: 1px solid var(--border); }
+  #topbar .icon-btn { background: transparent; border: none; color: var(--text); font-size: 20px; width: 38px; height: 38px; border-radius: 9px; transition: background .15s; }
+  #topbar .icon-btn:hover { background: var(--panel); }
+  #title { flex: 1; font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+  .back-btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px 8px 10px; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 9px; font-size: 14px; font-weight: 500; }
+  .back-btn .arr { font-size: 16px; }
+  .back-btn:active { border-color: var(--accent); }
+
+  #stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px; position: relative; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; min-height: 0; overflow: hidden; }
+  #word { font-size: 56px; font-weight: 500; text-align: center; line-height: 1.35; max-width: 92%; white-space: pre-wrap; word-break: break-word; text-rendering: optimizeLegibility; transition: font-size .15s; }
+  #word .orp { color: var(--orp); text-shadow: 0 0 16px rgba(255,91,91,.4); }
+  #word.serif { font-family: "Iowan Old Style", Georgia, "PT Serif", "Times New Roman", serif; }
+  #focusLine { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 2px; height: 1.4em; background: linear-gradient(180deg, transparent, var(--orp) 20%, var(--orp) 80%, transparent); opacity: .35; box-shadow: 0 0 10px rgba(255,91,91,.3); pointer-events: none; }
+  #hint { position: absolute; bottom: 12px; left: 18px; font-size: 12px; color: var(--muted); }
+  #wordCounter { position: absolute; bottom: 12px; right: 18px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  #progressBar { height: 4px; background: var(--panel); border-top: 1px solid var(--border); }
+  #progressFill { height: 100%; background: var(--grad); width: 0%; transition: width .1s linear; border-radius: 0 3px 3px 0; box-shadow: 0 0 12px var(--glow-soft); }
+
+  /* ---------- Панель управления ---------- */
+  #controls { padding: 12px 14px; background: var(--bg2); border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+  .ctrl-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+  .btn { padding: 9px 16px; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 9px; font-size: 14px; font-weight: 500; transition: border-color .15s, transform .1s, box-shadow .15s; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--grad); color: #fff; border-color: transparent; min-width: 96px; box-shadow: 0 6px 18px var(--glow); }
+  .btn.small { padding: 7px 11px; font-size: 15px; line-height: 1; }
+  .play-btn { width: 60px; height: 60px; border-radius: 50%; background: var(--grad); color: #fff; border: none; font-size: 22px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px var(--glow); transition: transform .12s, box-shadow .15s; flex: none; }
+  .play-btn:active { transform: scale(.93); }
+
+  .seg { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { padding: 7px 11px; background: transparent; border: none; color: var(--muted); font-size: 13px; font-weight: 500; transition: background .15s, color .15s; }
+  .seg button:hover { color: var(--text); }
+  .seg button.active { background: var(--grad); color: #fff; }
+  .seg-label { font-size: 12px; color: var(--muted); margin-right: 2px; }
+
+  .wpm-box { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; }
+  .wpm-box .num { min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 15px; }
+  .wpm-box .unit { font-size: 11px; color: var(--muted); }
+  .wpm-box button { background: transparent; border: none; color: var(--muted); font-size: 17px; width: 26px; height: 26px; }
+  .wpm-box button:hover { color: var(--text); }
+
+  /* ---------- Шторки (drawers) ---------- */
+  .drawer { position: fixed; top: 0; bottom: 0; width: 320px; max-width: 90vw; background: var(--bg2); border: 1px solid var(--border); z-index: 40; display: flex; flex-direction: column; transform: translateX(0); transition: transform .22s ease; }
+  #settingsDrawer { right: 0; transform: translateX(105%); border-radius: 12px 0 0 12px; }
+  #tocDrawer { left: 0; transform: translateX(-105%); border-radius: 0 12px 12px 0; }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid var(--border); }
+  .drawer-head h2 { font-size: 16px; font-weight: 600; }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 18px; }
+  .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 35; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .backdrop.show { opacity: 1; pointer-events: auto; }
+
+  .setting { display: flex; flex-direction: column; gap: 7px; }
+  .setting > label { font-size: 13px; color: var(--muted); }
+  .setting input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .row span { font-size: 13px; color: var(--muted); }
+  .switch { position: relative; width: 42px; height: 24px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .track { position: absolute; inset: 0; background: var(--border); border-radius: 12px; transition: .2s; }
+  .switch .track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: .2s; }
+  .switch input:checked + .track { background: var(--accent); }
+  .switch input:checked + .track::after { transform: translateX(18px); }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+  .presets button { padding: 5px 12px; font-size: 12px; border: 1px solid var(--border); background: transparent; color: var(--muted); border-radius: 6px; }
+  .presets button:hover { border-color: var(--accent); color: var(--text); }
+  .val { color: var(--text); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .hint-line { font-size: 12px; color: var(--muted); line-height: 1.7; border-top: 1px solid var(--border); padding-top: 12px; }
+
+  .toc-item { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; background: transparent; border: 1px solid transparent; border-radius: 8px; color: var(--text); font-size: 13px; text-align: left; }
+  .toc-item:hover { background: var(--panel); border-color: var(--border); }
+  .toc-item .toc-pct { color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+  .toc-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 20px 0; }
+
+  @media (max-width: 600px) {
+    #stage { padding: 16px; }
+    #hint { display: none; }
+    .btn { min-height: 44px; }
+    .btn.small { min-width: 42px; min-height: 44px; padding: 8px 11px; }
+    .seg button { min-height: 44px; padding: 8px 11px; }
+    .wpm-box { min-height: 44px; }
+    .wpm-box button { width: 34px; height: 34px; }
+    .back-btn { min-height: 44px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="header-row">
+    <div class="logo">🦊</div>
+    <h1>IziBook</h1>
+    <div class="brand">by <span>FoxyEvil</span></div>
+  </div>
+  <div class="rsvp-note"><b>RSVP</b> (Rapid Serial Visual Presentation) — метод скорочтения: слова показываются по одному в одной точке экрана, взгляд не бегает по строке, поэтому читать можно заметно быстрее обычного.</div>
+  <p>Загрузите <strong>.txt</strong> или <strong>.epub</strong>, либо вставьте текст.<br>Чтение без движения глаз: от одного слова до целого предложения.</p>
+
+  <div class="file-btn-wrap">
+    <label class="file-label" for="fileInput">📁 Выбрать файл</label>
+    <input type="file" id="fileInput" class="file-input" accept=".txt,.epub,text/plain,application/epub+zip">
+  </div>
+
+  <span class="divider">— или —</span>
+  <textarea id="pasteArea" placeholder="Вставьте текст сюда..."></textarea>
+  <div id="status"></div>
+  <button class="btn primary" id="startBtn">Начать чтение →</button>
+
+  <div class="loader-footer">
+    <a class="credit" href="https://t.me/F0xyEvil" target="_blank" rel="noopener">@F0xyEvil</a>
+  </div>
+</div>
+
+<div id="reader">
+  <div id="topbar">
+    <button class="back-btn" id="backBtn" title="Вернуться к загрузке"><span class="arr">←</span><span class="lbl">Назад</span></button>
+    <div id="title">Книга</div>
+    <button class="icon-btn" id="tocBtn" title="Оглавление">☰</button>
+    <button class="icon-btn" id="settingsBtn" title="Настройки">⚙</button>
+  </div>
+
+  <div id="stage">
+    <div id="focusLine"></div>
+    <div id="word">Готовы?</div>
+    <div id="hint">Пробел — пауза · ←/→ — слово · ↑/↓ — скорость · PgUp/PgDn — абзац</div>
+    <div id="wordCounter">0 / 0</div>
+  </div>
+
+  <div id="progressBar"><div id="progressFill"></div></div>
+
+  <div id="controls">
+    <div class="ctrl-row">
+      <button class="btn small" id="prevParaBtn" title="Пред. абзац">«</button>
+      <button class="btn small" id="prevChunkBtn" title="Пред. кусок">‹</button>
+      <button class="play-btn" id="playBtn" title="Старт / Пауза (Пробел)">▶</button>
+      <button class="btn small" id="nextChunkBtn" title="След. кусок">›</button>
+      <button class="btn small" id="nextParaBtn" title="След. абзац">»</button>
+    </div>
+    <div class="ctrl-row">
+      <span class="seg-label">Слов в кадре:</span>
+      <div class="seg" id="chunkSeg">
+        <button data-mode="words" data-words="1">1</button>
+        <button data-mode="words" data-words="2">2</button>
+        <button data-mode="words" data-words="3">3</button>
+        <button data-mode="words" data-words="4">4</button>
+        <button data-mode="words" data-words="6">6</button>
+        <button data-mode="auto">Авто</button>
+        <button data-mode="sentence">Предлож.</button>
+      </div>
+      <div class="wpm-box">
+        <button id="wpmMinus">−</button>
+        <span class="num" id="wpmVal">300</span>
+        <span class="unit">сл/мин</span>
+        <button id="wpmPlus">+</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+
+<div class="drawer" id="settingsDrawer">
+  <div class="drawer-head"><h2>Настройки</h2><button class="icon-btn" data-close>✕</button></div>
+  <div class="drawer-body">
+    <div class="setting">
+      <label>Скорость: <span class="val" id="speedVal">300</span> слов/мин</label>
+      <input type="range" id="speed" min="100" max="1000" step="10" value="300">
+      <div class="presets">
+        <button data-wpm="200">200</button>
+        <button data-wpm="300">300</button>
+        <button data-wpm="450">450</button>
+        <button data-wpm="600">600</button>
+        <button data-wpm="800">800</button>
+      </div>
+    </div>
+    <div class="setting">
+      <label>Размер шрифта: <span class="val" id="fontVal">56</span>px</label>
+      <input type="range" id="fontSize" min="24" max="96" step="2" value="56">
+    </div>
+    <div class="setting">
+      <label>Шрифт текста</label>
+      <div class="seg" id="fontSeg">
+        <button data-font="sans">Без засечек</button>
+        <button data-font="serif">С засечками</button>
+      </div>
+    </div>
+    <div class="setting">
+      <label>Подсветка</label>
+      <div class="seg" id="highlightSeg">
+        <button data-hl="all">Всё</button>
+        <button data-hl="letter">Буква</button>
+        <button data-hl="line">Штрих</button>
+        <button data-hl="none">Ничего</button>
+      </div>
+    </div>
+    <div class="row"><span>Паузы на знаках препинания</span><label class="switch"><input type="checkbox" id="pauseToggle" checked><span class="track"></span></label></div>
+    <div class="row"><span>Тёмная тема</span><label class="switch"><input type="checkbox" id="themeToggle" checked><span class="track"></span></label></div>
+    <button class="btn" id="clearPosBtn">Сбросить прогресс этой книги</button>
+    <div class="hint-line">
+      <b>Клавиши:</b> Пробел — пауза · ←/→ — кусок · ↑/↓ — скорость<br>
+      PgUp/PgDn — абзац · Home — начало · Esc — назад · O — подсветка
+    </div>
+  </div>
+</div>
+
+<div class="drawer" id="tocDrawer">
+  <div class="drawer-head"><h2>Оглавление</h2><button class="icon-btn" data-close>✕</button></div>
+  <div class="drawer-body" id="tocList"></div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const loader = $('loader'), reader = $('reader'), wordEl = $('word'), stage = $('stage');
+  const progressFill = $('progressFill'), wordCounter = $('wordCounter'), fileInput = $('fileInput');
+  const pasteArea = $('pasteArea'), startBtn = $('startBtn'), playBtn = $('playBtn');
+  const backBtn = $('backBtn'), titleEl = $('title'), statusEl = $('status');
+  const speedSlider = $('speed'), speedVal = $('speedVal'), wpmVal = $('wpmVal'), wpmMinus = $('wpmMinus'), wpmPlus = $('wpmPlus');
+  const fontSlider = $('fontSize'), fontVal = $('fontVal'), focusLine = $('focusLine');
+  const pauseToggle = $('pauseToggle'), themeToggle = $('themeToggle');
+  const highlightSeg = $('highlightSeg');
+  const chunkSeg = $('chunkSeg'), settingsDrawer = $('settingsDrawer'), tocDrawer = $('tocDrawer');
+  const tocList = $('tocList'), backdrop = $('backdrop'), clearPosBtn = $('clearPosBtn');
+  const prevParaBtn = $('prevParaBtn'), nextParaBtn = $('nextParaBtn'), prevChunkBtn = $('prevChunkBtn'), nextChunkBtn = $('nextChunkBtn');
+  const settingsBtn = $('settingsBtn'), tocBtn = $('tocBtn');
+  const fontSeg = $('fontSeg');
+
+  const LS_SETTINGS = 'izibook-v3-settings';
+  const LS_POS = 'izibook-v3-pos-';
+
+  const state = {
+    mode: 'words', wordCount: 1,
+    wpm: 300, fontSize: 56, pauses: true, dark: true,
+    font: 'sans', highlight: 'all'
+  };
+
+  let paragraphs = [];       // { text, sentences: string[][] }
+  let chunks = [];           // { text, count, start, sentenceEnd, paraStart, paraEnd, para }
+  let chapters = [];         // { title, chunk }
+  let chunkIndex = 0, totalWords = 0, playing = false, timer = null, bookHash = '', bookName = '';
+
+  // ---------- Утилиты ----------
+  function setStatus(msg, isError) {
+    statusEl.textContent = msg || '';
+    statusEl.classList.toggle('error', !!isError);
+  }
+  function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function hashStr(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h.toString(36); }
+  function letters(w) { return w.replace(/[^\p{L}\p{N}]/gu, '').length; }
+  function centerCharIndex(text) {
+    const chars = Array.from(text);
+    const n = chars.length;
+    if (!n) return 0;
+    const center = n / 2;
+    let best = 0, bestDist = Infinity;
+    for (let i = 0; i < n; i++) {
+      if (/\s/.test(chars[i])) continue;
+      const dist = Math.abs(i + 0.5 - center);
+      if (dist < bestDist) { bestDist = dist; best = i; }
+    }
+    return best;
+  }
+
+  // ---------- Разбор текста ----------
+  function splitSentences(paragraph) {
+    const parts = paragraph.match(/[^.!?…]+[.!?…]+["'»)\]]*|[^.!?…]+$/g) || [paragraph];
+    return parts.map(x => x.trim()).filter(Boolean);
+  }
+  function parseText(text) {
+    let t = text.replace(/\r\n?/g, '\n').replace(/\u00a0/g, ' ');
+    t = t.replace(/\n[ \t]{2,}/g, '\n\n'); // отступ в начале строки = новый абзац
+    t = t.replace(/\n{2,}/g, '\u0000');     // пустые строки -> маркер абзаца
+    t = t.replace(/\n/g, ' ');              // перенос строки внутри абзаца -> пробел
+    t = t.replace(/\u0000/g, '\n\n');
+    return t
+      .split(/\n\s*\n/)
+      .map(p => p.replace(/[ \t]+/g, ' ').trim())
+      .filter(Boolean)
+      .map(p => ({ text: p, sentences: splitSentences(p).map(s => s.split(' ').filter(Boolean)) }));
+  }
+  function isChapterHeading(t) {
+    return /^(глава|часть|книга|раздел|том|пролог|эпилог|введение|заключение|chapter|part|prologue|epilogue)\b/i.test(t)
+        || /^\d{1,3}[.)]?$/.test(t);
+  }
+
+  // ---------- Умная группировка ----------
+  function smartStep(wordsArr, i) {
+    const MAX = 7, MAXCHARS = 24;
+    let step = 1, chars = letters(wordsArr[i]);
+    for (let j = i + 1; j < wordsArr.length && j - i < MAX; j++) {
+      const add = letters(wordsArr[j]);
+      if (chars + add > MAXCHARS) break;
+      chars += add;
+      step = j - i + 1;
+      if (/[.!?…,;:—]$/.test(wordsArr[j])) break;
+    }
+    return step;
+  }
+  function splitLongSentence(wordsArr) {
+    const MAX = 16;
+    if (wordsArr.length <= MAX) return [wordsArr];
+    const out = []; let cur = [];
+    for (const w of wordsArr) {
+      cur.push(w);
+      if (cur.length >= MAX && /[,;:—]$/.test(w)) { out.push(cur); cur = []; }
+      else if (cur.length >= MAX + 8) { out.push(cur); cur = []; }
+    }
+    if (cur.length) out.push(cur);
+    return out;
+  }
+
+  // ---------- Построение чанков ----------
+  function rebuildChunks() {
+    const oldWord = chunks[chunkIndex] ? chunks[chunkIndex].start : 0;
+    chunks = []; chapters = []; let wordCursor = 0;
+
+    paragraphs.forEach((p, pi) => {
+      if (isChapterHeading(p.text)) chapters.push({ title: p.text.slice(0, 80), chunk: chunks.length });
+      const paraStart = chunks.length;
+      p.sentences.forEach(wordsArr => {
+        const groups = (state.mode === 'sentence')
+          ? splitLongSentence(wordsArr)
+          : chunkWords(wordsArr);
+        groups.forEach((grp, gi) => {
+          const text = grp.join(' ');
+          const last = gi === groups.length - 1;
+          chunks.push({ text, count: grp.length, start: wordCursor, sentenceEnd: last, paraStart: false, paraEnd: false, para: pi });
+          wordCursor += grp.length;
+        });
+      });
+      if (chunks.length > paraStart) {
+        chunks[paraStart].paraStart = true;
+        chunks[chunks.length - 1].paraEnd = true;
+        chunks[chunks.length - 1].sentenceEnd = true;
+      }
+    });
+
+    totalWords = wordCursor;
+    const pos = Math.min(oldWord, Math.max(0, totalWords - 1));
+    chunkIndex = chunks.findIndex(c => c.start <= pos && c.start + c.count > pos);
+    if (chunkIndex < 0) chunkIndex = chunks.length - 1;
+    render();
+  }
+  function chunkWords(wordsArr) {
+    const out = []; let i = 0;
+    while (i < wordsArr.length) {
+      const step = (state.mode === 'auto') ? smartStep(wordsArr, i) : state.wordCount;
+      out.push(wordsArr.slice(i, i + step));
+      i += step;
+    }
+    return out;
+  }
+
+  // ---------- Рендер ----------
+  function setChunkHtml(text, hiCharIdx) {
+    wordEl.replaceChildren();
+    if (showLetter()) {
+      const chars = Array.from(text);
+      const c = chars[hiCharIdx];
+      if (c !== undefined) {
+        wordEl.append(document.createTextNode(chars.slice(0, hiCharIdx).join('')));
+        const s = document.createElement('span'); s.className = 'orp'; s.textContent = c;
+        wordEl.append(s);
+        wordEl.append(document.createTextNode(chars.slice(hiCharIdx + 1).join('')));
+        return;
+      }
+    }
+    wordEl.textContent = text;
+  }
+  function render() {
+    const c = chunks[chunkIndex];
+    if (!c) {
+      wordEl.textContent = '✓ Конец';
+      progressFill.style.width = '100%';
+      wordCounter.textContent = `${totalWords} / ${totalWords}`;
+      stop(); return;
+    }
+    setChunkHtml(c.text, centerCharIndex(c.text));
+
+    const done = c.start + c.count;
+    const pct = totalWords ? Math.round(done / totalWords * 100) : 0;
+    const etaMin = state.wpm ? (totalWords - done) / state.wpm : 0;
+    wordCounter.textContent = `${done} / ${totalWords} · ${pct}%` + (etaMin > 0 ? ` · ~${Math.ceil(etaMin)} мин` : '');
+
+    progressFill.style.width = (done / totalWords * 100) + '%';
+  }
+  // ---------- Воспроизведение ----------
+  function schedule() {
+    clearTimeout(timer);
+    if (!playing) return;
+    const c = chunks[chunkIndex];
+    if (!c) { stop(); return; }
+    let delay = (c.count / state.wpm) * 60000;
+    if (state.pauses) {
+      if (c.sentenceEnd) delay *= 1.7;
+      else if (/[,;:—]["'»\)\]]?$/.test(c.text)) delay *= 1.3;
+    }
+    timer = setTimeout(() => {
+      chunkIndex++;
+      if (chunkIndex >= chunks.length) { stop(); render(); return; }
+      render(); savePos(); schedule();
+    }, delay);
+  }
+  function play() {
+    if (!chunks.length) return;
+    if (chunkIndex >= chunks.length) chunkIndex = 0;
+    playing = true; updatePlayBtn(); schedule();
+  }
+  function stop() { playing = false; clearTimeout(timer); updatePlayBtn(); }
+  function updatePlayBtn() { playBtn.textContent = playing ? '⏸' : '▶'; playBtn.title = playing ? 'Пауза (Пробел)' : 'Старт (Пробел)'; }
+
+  // ---------- Навигация ----------
+  function goChunk(delta) { stop(); chunkIndex = Math.max(0, Math.min(chunks.length - 1, chunkIndex + delta)); render(); savePos(); }
+  function goParagraph(delta) {
+    stop();
+    const cur = chunks[chunkIndex] ? chunks[chunkIndex].para : 0;
+    let i = chunkIndex, found = -1;
+    while (i >= 0 && i < chunks.length) { i += delta; if (i < 0 || i >= chunks.length) break; if (delta < 0 ? chunks[i].paraStart : (chunks[i].para > cur)) { found = i; break; } }
+    if (found >= 0) { chunkIndex = found; render(); savePos(); }
+  }
+
+  // ---------- Сохранение ----------
+  function saveSettings() {
+    const s = { wpm: state.wpm, mode: state.mode, wordCount: state.wordCount, fontSize: state.fontSize, pauses: state.pauses, dark: state.dark, font: state.font, highlight: state.highlight };
+    try { localStorage.setItem(LS_SETTINGS, JSON.stringify(s)); } catch (e) {}
+  }
+  function loadSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem(LS_SETTINGS) || 'null');
+      if (s) Object.assign(state, s);
+    } catch (e) {}
+  }
+  function savePos() {
+    if (!bookHash) return;
+    try { localStorage.setItem(LS_POS + bookHash, JSON.stringify({ idx: chunkIndex, total: totalWords })); } catch (e) {}
+  }
+  function loadPos() {
+    try { return JSON.parse(localStorage.getItem(LS_POS + bookHash) || 'null'); } catch (e) { return null; }
+  }
+  function clearPos() {
+    if (bookHash) { try { localStorage.removeItem(LS_POS + bookHash); } catch (e) {} }
+    chunkIndex = 0; render(); savePos();
+  }
+
+  // ---------- Применение настроек в UI ----------
+  function applySettingsToUI() {
+    speedSlider.value = state.wpm; speedVal.textContent = state.wpm; wpmVal.textContent = state.wpm;
+    fontSlider.value = state.fontSize; fontVal.textContent = state.fontSize;
+    wordEl.style.fontSize = state.fontSize + 'px';
+    focusLine.style.fontSize = state.fontSize + 'px';
+    pauseToggle.checked = state.pauses; themeToggle.checked = state.dark;
+    document.body.classList.toggle('light', !state.dark);
+    applyFont();
+    applyHighlight();
+    applyMetaTheme();
+    updateSeg();
+  }
+  function applyFont() {
+    wordEl.classList.toggle('serif', state.font === 'serif');
+    [...fontSeg.querySelectorAll('button')].forEach(b => b.classList.toggle('active', b.dataset.font === state.font));
+  }
+  function applyMetaTheme() {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = state.dark ? '#0f1712' : '#f2f5ef';
+  }
+  function showLetter() { return state.highlight === 'all' || state.highlight === 'letter'; }
+  function showLine() { return state.highlight === 'all' || state.highlight === 'line'; }
+  function applyHighlight() {
+    [...highlightSeg.querySelectorAll('button')].forEach(b => b.classList.toggle('active', b.dataset.hl === state.highlight));
+    focusLine.style.display = showLine() ? '' : 'none';
+  }
+  function updateSeg() {
+    [...chunkSeg.querySelectorAll('button')].forEach(b => {
+      const active = b.dataset.mode === state.mode && (b.dataset.mode !== 'words' || parseInt(b.dataset.words, 10) === state.wordCount);
+      b.classList.toggle('active', active);
+    });
+  }
+
+  function setWpm(v) {
+    state.wpm = Math.max(100, Math.min(1000, Math.round(v / 10) * 10));
+    speedSlider.value = state.wpm; speedVal.textContent = state.wpm; wpmVal.textContent = state.wpm;
+    if (playing) schedule();
+    saveSettings();
+  }
+
+  function openDrawer(d) {
+    if (d === 'settings') { settingsDrawer.classList.add('open'); renderToc(false); }
+    if (d === 'toc') { tocDrawer.classList.add('open'); renderToc(true); }
+    backdrop.classList.add('show');
+  }
+  function closeDrawers() {
+    settingsDrawer.classList.remove('open'); tocDrawer.classList.remove('open'); backdrop.classList.remove('show');
+  }
+
+  function renderToc(reopen) {
+    if (!reopen) return;
+    tocList.innerHTML = '';
+    if (!chapters.length) { tocList.innerHTML = '<div class="toc-empty">Главы не найдены</div>'; return; }
+    chapters.forEach(ch => {
+      const el = document.createElement('button');
+      el.className = 'toc-item';
+      const pct = chunks.length ? Math.round(ch.chunk / chunks.length * 100) : 0;
+      el.innerHTML = `<span>${escapeHtml(ch.title)}</span><span class="toc-pct">${pct}%</span>`;
+      el.addEventListener('click', () => { stop(); chunkIndex = ch.chunk; render(); savePos(); closeDrawers(); });
+      tocList.appendChild(el);
+    });
+  }
+
+  // ---------- Старт чтения ----------
+  function startReading(text, name) {
+    paragraphs = parseText(text);
+    if (!paragraphs.length || !paragraphs.some(p => p.sentences.some(s => s.length))) {
+      setStatus('Не удалось найти слова в тексте', true); return;
+    }
+    bookName = name || 'Вставленный текст';
+    titleEl.textContent = bookName;
+    bookHash = hashStr(text.slice(0, 5000) + text.length);
+    setStatus('');
+    loadSettings();
+    applySettingsToUI();
+    rebuildChunks();
+    const saved = loadPos();
+    if (saved && saved.total === totalWords && saved.idx >= 0 && saved.idx < chunks.length) chunkIndex = saved.idx; else chunkIndex = 0;
+    loader.style.display = 'none';
+    reader.classList.add('active');
+    render();
+  }
+
+  // ---------- Чтение .txt с определением кодировки ----------
+  function scoreCyrillic(s) {
+    let good = 0, bad = 0;
+    for (const ch of s) {
+      const c = ch.codePointAt(0);
+      const ru = (c >= 0x0410 && c <= 0x044F) || c === 0x0401 || c === 0x0451; // А-я, Ё, ё
+      if (ru) good++;
+      else if ((c >= 0x0400 && c <= 0x04FF) || /[\p{S}\p{C}]/u.test(ch)) bad++; // чужая кириллица/символы/управляющие
+    }
+    return good - bad * 3;
+  }
+  async function readTextFile(file) {
+    const buf = await file.arrayBuffer();
+    const b = new Uint8Array(buf);
+    if (b.length >= 2 && b[0] === 0xFF && b[1] === 0xFE) return new TextDecoder('utf-16le').decode(buf);
+    if (b.length >= 2 && b[0] === 0xFE && b[1] === 0xFF) return new TextDecoder('utf-16be').decode(buf);
+    if (b.length >= 3 && b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF) return new TextDecoder('utf-8').decode(buf.slice(3));
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (e) {}
+    const w = new TextDecoder('windows-1251').decode(buf);
+    const i = new TextDecoder('ibm866').decode(buf);
+    return scoreCyrillic(i) > scoreCyrillic(w) ? i : w;
+  }
+
+  // ---------- EPUB ----------
+  function ensureJSZip() {
+    if (typeof JSZip !== 'undefined') return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Не удалось загрузить JSZip — для EPUB нужен интернет'));
+      document.head.appendChild(s);
+    });
+  }
+  async function extractEpubText(file) {
+    await ensureJSZip();
+    if (typeof JSZip === 'undefined') throw new Error('JSZip не загружен (проверьте интернет)');
+    const arrayBuffer = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    const containerPath = Object.keys(zip.files).find(p => p.toLowerCase() === 'meta-inf/container.xml');
+    if (!containerPath) throw new Error('Это не EPUB: нет META-INF/container.xml');
+    const containerXml = await zip.file(containerPath).async('string');
+    const opfPathMatch = containerXml.match(/full-path=["']([^"']+)["']/);
+    if (!opfPathMatch) throw new Error('Не найден файл OPF внутри EPUB');
+    const opfPath = opfPathMatch[1];
+    const opfDir = opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/') + 1) : '';
+    const opfFile = zip.file(opfPath) || zip.file(opfPath.toLowerCase());
+    if (!opfFile) throw new Error('Файл OPF не найден в архиве');
+    const opfXml = await opfFile.async('string');
+
+    const manifestItems = {};
+    let m;
+    const re1 = /<item\b[^>]*\bhref=["']([^"']+)["'][^>]*\bid=["']([^"']+)["'][^>]*>/g;
+    while ((m = re1.exec(opfXml))) manifestItems[m[2]] = m[1];
+    const re2 = /<item\b[^>]*\bid=["']([^"']+)["'][^>]*\bhref=["']([^"']+)["'][^>]*>/g;
+    while ((m = re2.exec(opfXml))) manifestItems[m[1]] = m[2];
+
+    const spineRegex = /<itemref\b[^>]*\bidref=["']([^"']+)["']/g;
+    const order = [];
+    while ((m = spineRegex.exec(opfXml))) order.push(m[1]);
+    const ids = order.length ? order : Object.keys(manifestItems);
+
+    let fullText = '';
+    for (const id of ids) {
+      const href = manifestItems[id];
+      if (!href) continue;
+      const cleanHref = decodeURIComponent(href.split('#')[0]);
+      const path = opfDir + cleanHref;
+      const fileEntry = zip.file(path) || zip.file(path.toLowerCase());
+      if (!fileEntry) continue;
+      let html = await fileEntry.async('string');
+      html = html.replace(/<script[\s\S]*?<\/script>/gi, ' ')
+                 .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+                 .replace(/<\/(p|div|h[1-6]|li|br)>/gi, '\n')
+                 .replace(/<[^>]+>/g, ' ');
+      const txt = new DOMParser().parseFromString('<div>' + html + '</div>', 'text/html').body.textContent;
+      if (txt && txt.trim()) fullText += txt + '\n\n';
+    }
+    if (!fullText.trim()) throw new Error('В EPUB нет читаемого текста (возможно, DRM)');
+    return fullText;
+  }
+
+  // ---------- События ----------
+  fileInput.addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setStatus('Обработка файла...');
+    try {
+      let text;
+      if (file.name.toLowerCase().endsWith('.epub') || file.type === 'application/epub+zip') text = await extractEpubText(file);
+      else text = await readTextFile(file);
+      startReading(text, file.name.replace(/\.(txt|epub)$/i, ''));
+    } catch (err) {
+      console.error(err);
+      setStatus('Ошибка: ' + err.message, true);
+    }
+    fileInput.value = '';
+  });
+  startBtn.addEventListener('click', () => {
+    const text = pasteArea.value.trim();
+    if (!text) { setStatus('Вставьте текст или выберите файл!', true); return; }
+    startReading(text);
+  });
+  backBtn.addEventListener('click', () => {
+    stop(); closeDrawers();
+    reader.classList.remove('active');
+    loader.style.display = 'flex';
+  });
+
+  playBtn.addEventListener('click', () => playing ? stop() : play());
+  stage.addEventListener('click', e => { if (e.target === stage || e.target === wordEl || e.target.closest('#word')) { playing ? stop() : play(); } });
+  prevChunkBtn.addEventListener('click', () => goChunk(-1));
+  nextChunkBtn.addEventListener('click', () => goChunk(1));
+  prevParaBtn.addEventListener('click', () => goParagraph(-1));
+  nextParaBtn.addEventListener('click', () => goParagraph(1));
+
+  wpmMinus.addEventListener('click', () => setWpm(state.wpm - 25));
+  wpmPlus.addEventListener('click', () => setWpm(state.wpm + 25));
+  speedSlider.addEventListener('input', () => setWpm(parseInt(speedSlider.value, 10)));
+  [...document.querySelectorAll('.presets button')].forEach(b => b.addEventListener('click', () => setWpm(parseInt(b.dataset.wpm, 10))));
+
+  chunkSeg.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    stop();
+    state.mode = b.dataset.mode;
+    if (state.mode === 'words') state.wordCount = parseInt(b.dataset.words, 10);
+    updateSeg(); rebuildChunks(); saveSettings();
+  });
+
+  fontSlider.addEventListener('input', () => {
+    state.fontSize = parseInt(fontSlider.value, 10);
+    fontVal.textContent = state.fontSize;
+    wordEl.style.fontSize = state.fontSize + 'px';
+    focusLine.style.fontSize = state.fontSize + 'px';
+    saveSettings();
+  });
+  pauseToggle.addEventListener('change', () => { state.pauses = pauseToggle.checked; saveSettings(); });
+  highlightSeg.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    state.highlight = b.dataset.hl;
+    applyHighlight(); render(); saveSettings();
+  });
+  themeToggle.addEventListener('change', () => { state.dark = themeToggle.checked; document.body.classList.toggle('light', !state.dark); applyMetaTheme(); saveSettings(); });
+  clearPosBtn.addEventListener('click', () => { clearPos(); closeDrawers(); });
+
+  fontSeg.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    state.font = b.dataset.font;
+    applyFont();
+    saveSettings();
+  });
+
+  settingsBtn.addEventListener('click', () => openDrawer('settings'));
+  tocBtn.addEventListener('click', () => openDrawer('toc'));
+  backdrop.addEventListener('click', closeDrawers);
+  [...document.querySelectorAll('[data-close]')].forEach(b => b.addEventListener('click', closeDrawers));
+
+  document.addEventListener('keydown', e => {
+    if (!reader.classList.contains('active')) return;
+    if (e.code === 'Space') { e.preventDefault(); playing ? stop() : play(); }
+    else if (e.code === 'ArrowRight') { e.preventDefault(); goChunk(1); }
+    else if (e.code === 'ArrowLeft') { e.preventDefault(); goChunk(-1); }
+    else if (e.code === 'ArrowUp') { e.preventDefault(); setWpm(state.wpm + 25); }
+    else if (e.code === 'ArrowDown') { e.preventDefault(); setWpm(state.wpm - 25); }
+    else if (e.code === 'PageDown') { e.preventDefault(); goParagraph(1); }
+    else if (e.code === 'PageUp') { e.preventDefault(); goParagraph(-1); }
+    else if (e.code === 'Home') { e.preventDefault(); stop(); chunkIndex = 0; render(); savePos(); }
+    else if (e.code === 'KeyO') {
+      const order = ['all', 'letter', 'line', 'none'];
+      state.highlight = order[(order.indexOf(state.highlight) + 1) % order.length];
+      applyHighlight(); render(); saveSettings();
+    }
+    else if (e.code === 'Escape') { if (settingsDrawer.classList.contains('open') || tocDrawer.classList.contains('open')) closeDrawers(); else backBtn.click(); }
+  });
+
+  // ---------- PWA: иконка + manifest (безопасно) ----------
+  function makeIcon() {
+    try {
+      const c = document.createElement('canvas'); c.width = c.height = 192;
+      const x = c.getContext('2d');
+      const g = x.createLinearGradient(0, 0, 192, 192);
+      g.addColorStop(0, '#f97316'); g.addColorStop(1, '#fbbf24');
+      x.fillStyle = g;
+      x.beginPath();
+      if (typeof x.roundRect === 'function') x.roundRect(0, 0, 192, 192, 42); else x.rect(0, 0, 192, 192);
+      x.fill();
+      x.font = '110px serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillText('🦊', 96, 104);
+      return c.toDataURL('image/png');
+    } catch (e) { return null; }
+  }
+  try {
+    const icon = makeIcon();
+    if (icon) {
+      const ati = document.createElement('link');
+      ati.rel = 'apple-touch-icon'; ati.href = icon;
+      document.head.appendChild(ati);
+      const manifest = { name: 'IziBook', short_name: 'IziBook', display: 'standalone', background_color: '#0f1712', theme_color: '#0f1712', icons: [{ src: icon, sizes: '192x192', type: 'image/png', purpose: 'any' }] };
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' }));
+      document.head.appendChild(link);
+    }
+  } catch (e) { console.warn('pwa:', e); }
+
+  // Применяем сохранённые настройки сразу при загрузке страницы
+  try {
+    loadSettings();
+    applySettingsToUI();
+  } catch (e) { console.warn('init:', e); }
+})();
+</script>
+</body>
+</html>
