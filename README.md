@@ -4,6 +4,22 @@
 
 **by [FoxyEvil](https://t.me/F0xyEvil)**
 
+---
+
+## 🚀 Быстрый старт
+
+| Действие | Ссылка |
+|---|---|
+| ▶️ **Открыть онлайн** | [Открыть тут →](https://yourolga777.github.io/IziBook/) |
+| ⬇️ **Скачать** | [Скачать тут →](https://github.com/yourolga777/IziBook/releases/tag/IziBook) |
+
+## 📚 Примеры текстов
+
+Попробуйте на готовых книгах (`.txt` и `.epub`):
+
+- **Демоническая женщина** (Тэффи): [txt](https://github.com/yourolga777/IziBook/releases/download/IziBook/Teffi.txt) · [epub](https://github.com/yourolga777/IziBook/releases/download/IziBook/Teffi.epub)
+- **Вэйский Лин-гун** (Лунь Юй): [txt](https://github.com/yourolga777/IziBook/releases/download/IziBook/LinGun.txt) · [epub](https://github.com/yourolga777/IziBook/releases/download/IziBook/LinGun.epub)
+
 ## Возможности
 
 - Загрузка книг: `.txt`, `.epub` (распаковка через JSZip) или вставка текста.
@@ -16,16 +32,13 @@
 
 ## Как запустить
 
+- **Онлайн:** откройте [yourolga777.github.io/IziBook](https://yourolga777.github.io/IziBook/) — работает и на iPhone.
 - **Компьютер / Android:** откройте `index.html` (или нужную версию) в браузере — работает локально.
-- **iPhone:** локальный `.html` через «Файлы» открывается в предпросмотре без JavaScript. Откройте страницу по HTTPS (GitHub Pages) или скачайте сборку из [Releases](https://github.com/yourolga777/IziBook/releases).
+- **iPhone (локально):** локальный `.html` через «Файлы» открывается в предпросмотре без JavaScript — используйте онлайн-версию.
 
 ## Горячие клавиши
 
 `Пробел` — пауза · `←/→` — кусок · `↑/↓` — скорость · `PgUp/PgDn` — абзац · `Home` — начало · `O` — подсветка · `Esc` — назад.
-
-## Скачать
-
-Последняя версия — в [Releases](https://github.com/yourolga777/IziBook/releases/tag/IziBook).
 
 ## Автор
 
