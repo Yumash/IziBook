@@ -38,7 +38,8 @@ samples/       ← демо-книги
 archive/       ← старые монолитные версии (история)
 ```
 
-Подробности: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+Для AI-агента (релизы, правила, карта кода): **[AGENTS.md](AGENTS.md)**.  
+Архитектура модулей: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 ## Как запустить
 
@@ -49,18 +50,11 @@ archive/       ← старые монолитные версии (истори�
 
 ## Как выпустить версию
 
-1. Синхронизировать номер в `package.json` и `js/state.js` (`IziBook.VERSION`).
-2. Закоммитить изменения в `main`.
-3. Создать и запушить тег:
+Полный чеклист: **[AGENTS.md](AGENTS.md)** → раздел про релиз.
 
-```bash
-git tag v3.2.0
-git push origin v3.2.0
-```
+Кратко: номер в `package.json` + `js/state.js` → коммит в `main` → `git tag -a v3.2.0 -m "…"` → `git push origin v3.2.0` → Actions соберёт Release.
 
-4. GitHub Actions соберёт single-file HTML + `samples.zip` и создаст Release.
-
-Не кладите новые версии отдельными файлами в корень (`IziBook-vX.html`) — для этого есть **теги и Releases**.
+Не кладите новые версии файлами в корень (`IziBook-vX.html`) — только **теги и Releases**.
 
 ## Горячие клавиши
 

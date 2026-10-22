@@ -48,13 +48,10 @@ GitHub Pages у репозитория настроены как **branch `main`
 
 ## Релизы
 
-Версия живёт в `package.json` и `IziBook.VERSION` (`js/state.js`).
+Пошаговый чеклист для человека и AI-агента — в **[AGENTS.md](AGENTS.md)** (раздел «Когда пользователь просит сделать релиз»).
 
-1. Обновить версию в обоих местах.
-2. Закоммитить и создать тег: `git tag v3.2.0 && git push origin v3.2.0`
-3. Workflow `.github/workflows/release.yml` соберёт single-file HTML и `samples.zip`, создаст GitHub Release.
-
-Старые монолиты лежат в `archive/` только как история; продукт — текущие `index.html` + `css/` + `js/`.
+Кратко: версия в `package.json` + `js/state.js` → тег `vX.Y.Z` → workflow `release.yml` → GitHub Release.  
+Старые монолиты — в `archive/`; продукт — `index.html` + `css/` + `js/` в корне.
 
 ## Известные ограничения
 

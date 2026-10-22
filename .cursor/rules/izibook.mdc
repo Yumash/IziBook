@@ -1,0 +1,14 @@
+---
+description: IziBook — архитектура, Pages и релизы. Читать AGENTS.md.
+alwaysApply: true
+---
+
+# IziBook
+
+Перед изменениями открой и следуй **AGENTS.md** в корне репозитория.
+
+Критично:
+- Вход сайта: `index.html` + `css/` + `js/` в **корне** (GitHub Pages = `main` + `/`). Не переносить без смены Pages.
+- Версии = git tags `vX.Y.Z` + Releases, не новые `IziBook-vN.html` в корне.
+- Релиз: синхронизировать `package.json` и `js/state.js` → `git tag -a vX.Y.Z` → push тега (см. AGENTS.md).
+- Детали модулей: ARCHITECTURE.md.
